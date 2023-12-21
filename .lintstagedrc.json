@@ -1,0 +1,4 @@
+{
+  "!(*.js|*.jsx|*.ts|*.tsx|.gitignore|pre-commit|*.txt)": ["prettier --write"],
+  "*.{js,jsx,ts,tsx}": ["eslint", "prettier --write"]
+}
