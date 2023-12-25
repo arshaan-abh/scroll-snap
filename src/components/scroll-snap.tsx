@@ -31,7 +31,6 @@ const ScrollSnap: FC<ScrollSnapProps> = (props) => {
 
   const animate = useCallback(
     (timeStamp: number, next: boolean) => {
-      console.log(timeStamp);
       if (!windowHeight) return;
       if (!cubicBeziers.current) return;
 
@@ -44,7 +43,7 @@ const ScrollSnap: FC<ScrollSnapProps> = (props) => {
           const top =
             (next ? 1 : -1) * cubicBeziers.current[Math.floor(elapsed)] +
             index * windowHeight; // TODO should round?
-          scrollTo({ top, behavior: "instant" });
+          scrollTo({ top, behavior: "instant" }); // TODO use scrollBy
           previousTimeStamp.current = timeStamp;
         }
         animationFrame.current = raf((timeStamp) => {
@@ -89,12 +88,17 @@ const ScrollSnap: FC<ScrollSnapProps> = (props) => {
   useEffect(() => {
     resizeHandler();
     addEventListener("resize", resizeHandler, defaultListenerOptions);
-    addEventListener("wheel", wheelHandler, defaultListenerOptions); // TODO make compatible: wheel, onWheel, onMouseWheel, DOMMouseScroll, ...
     return () => {
       removeEventListener("resize", resizeHandler);
+    };
+  }, [resizeHandler]);
+
+  useEffect(() => {
+    addEventListener("wheel", wheelHandler, defaultListenerOptions); // TODO make compatible: wheel, onWheel, onMouseWheel, DOMMouseScroll, ...
+    return () => {
       removeEventListener("wheel", wheelHandler);
     };
-  }, [resizeHandler, wheelHandler]);
+  }, [wheelHandler]);
 
   useEffect(() => {
     if (!windowHeight) return;
@@ -107,7 +111,7 @@ const ScrollSnap: FC<ScrollSnapProps> = (props) => {
     });
   }, [cubicBezier, duration, windowHeight]);
 
-  return <div className={`*:h-screen ${className}`} {...otherProps} />;
+  return <div className={`*:h-svh ${className}`} {...otherProps} />; // TODO make svh compatible
 };
 
 export default ScrollSnap;
