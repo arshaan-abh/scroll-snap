@@ -8,6 +8,7 @@ import {
 } from "react";
 import HTMLProps from "../interfaces/html-props";
 import cubicBezierInterpolation from "../utilities/cubic-bezier-interpolation";
+import supportsTouch from "../utilities/supports-touch";
 import defaultListenerOptions from "../utilities/default-listener-options";
 import { raf, caf } from "../utilities/animation-frame";
 import "./scroll-snap.css";
@@ -28,6 +29,7 @@ const ScrollSnap: FC<ScrollSnapProps> = (props) => {
   const midAnimation = useRef(false);
   const animationFrame = useRef<number | null>(null);
   const cubicBeziers = useRef<number[] | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   const animate = useCallback(
     (timeStamp: number, next: boolean) => {
@@ -57,22 +59,10 @@ const ScrollSnap: FC<ScrollSnapProps> = (props) => {
         previousTimeStamp.current = null;
         midAnimation.current = false;
         animationFrame.current = null;
+        touchStartY.current = null; // ?
       }
     },
     [duration, index, windowHeight],
-  );
-
-  const wheelHandler = useCallback(
-    (event: WheelEvent) => {
-      if (!midAnimation.current)
-        animationFrame.current = raf((timeStamp) => {
-          const next = event.deltaY > 0;
-          if (next && index < Children.count(props.children) - 1)
-            animate(timeStamp, true);
-          else if (!next && index > 0) animate(timeStamp, false);
-        });
-    },
-    [animate, index, props.children],
   );
 
   const resizeHandler = useCallback(() => {
@@ -93,12 +83,59 @@ const ScrollSnap: FC<ScrollSnapProps> = (props) => {
     };
   }, [resizeHandler]);
 
+  const scroll = useCallback(
+    (next: boolean) => {
+      if (midAnimation.current) return;
+
+      if (next && index < Children.count(props.children) - 1)
+        animationFrame.current = raf((timeStamp) => {
+          animate(timeStamp, true);
+        });
+      else if (!next && index > 0)
+        animationFrame.current = raf((timeStamp) => {
+          animate(timeStamp, false);
+        });
+    },
+    [animate, index, props.children],
+  );
+
+  const wheelHandler = useCallback(
+    (event: WheelEvent) => {
+      scroll(event.deltaY > 0);
+    },
+    [scroll],
+  );
+
   useEffect(() => {
     addEventListener("wheel", wheelHandler, defaultListenerOptions); // TODO make compatible: wheel, onWheel, onMouseWheel, DOMMouseScroll, ...
     return () => {
       removeEventListener("wheel", wheelHandler);
     };
   }, [wheelHandler]);
+
+  const pointerDownHandler = useCallback((event: PointerEvent) => {
+    touchStartY.current = event.clientY;
+  }, []);
+
+  const pointerMoveHandler = useCallback(
+    (event: PointerEvent) => {
+      if (touchStartY.current === null) return;
+
+      scroll(event.clientY < touchStartY.current);
+    },
+    [scroll],
+  );
+
+  useEffect(() => {
+    if (!supportsTouch) return;
+
+    addEventListener("pointerdown", pointerDownHandler, defaultListenerOptions);
+    addEventListener("pointermove", pointerMoveHandler, defaultListenerOptions);
+    return () => {
+      removeEventListener("pointerdown", pointerDownHandler);
+      removeEventListener("pointermove", pointerMoveHandler);
+    };
+  }, [pointerDownHandler, pointerMoveHandler]);
 
   useEffect(() => {
     if (!windowHeight) return;
